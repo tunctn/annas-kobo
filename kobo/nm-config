@@ -1,0 +1,4 @@
+menu_item:main:Anna's Kobo:nickel_wifi:autoconnect
+  chain_always:cmd_output:9500:quiet:/mnt/onboard/.adds/annas-kobo/annas-kobo.sh
+  chain_always:nickel_browser:modal:http://127.0.0.1:8484/
+menu_item:browser:Anna's Kobo:nickel_browser:modal:http://127.0.0.1:8484/

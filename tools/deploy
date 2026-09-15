@@ -1,0 +1,59 @@
+#!/bin/sh
+# Install (or update) Anna's Kobo on the device over Wi-Fi.
+#
+# The Kobo's stock sshd has no scp, so the binary is served from this Mac
+# over plain HTTP and the Kobo pulls it with busybox wget (fast); the small
+# files go through the ssh tty. Then the launcher line is added to the
+# NickelMenu config and a running service is restarted.
+#
+# usage: tools/deploy            (KOBO_HOST, KOBO_KEY, MAC_IP override)
+set -eu
+cd "$(dirname "$0")/.."
+HERE="$(pwd)"
+BIN=target/armv7-unknown-linux-musleabihf/release/annas-kobo
+[ -f "$BIN" ] || tools/build
+MAC_IP="${MAC_IP:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1)}"
+PORT=8765
+DST=/mnt/onboard/.adds/annas-kobo
+md5_of() { md5 -q "$1" 2>/dev/null || md5sum "$1" | cut -d' ' -f1; }
+WANT="$(md5_of "$BIN")"
+
+# 1. serve the binary (killing a server left over from an aborted run)
+pkill -f "http.server $PORT" 2>/dev/null || true
+SRV="$(mktemp -d)"
+cp "$BIN" "$SRV/annas-kobo"
+( cd "$SRV" && python3 -m http.server "$PORT" --bind 0.0.0.0 >/dev/null 2>&1 ) &
+SRVPID=$!
+trap 'kill $SRVPID 2>/dev/null; rm -rf "$SRV"' EXIT
+sleep 1
+
+# 2. stop a running service, pull the binary on the Kobo, swap it in, verify
+#    (the service is stopped first: replacing a running executable on the
+#    FAT partition fails with "text file busy")
+echo "pulling binary onto the Kobo from http://$MAC_IP:$PORT ..."
+GOT="$( {
+  echo "pkill -f 'annas-kobo serve' 2>/dev/null; sleep 1"
+  echo "mkdir -p $DST && cd $DST"
+  echo "wget -T 30 -O annas-kobo.new http://$MAC_IP:$PORT/annas-kobo 2>&1 | tail -2 && chmod +x annas-kobo.new && mv -f annas-kobo.new annas-kobo && md5sum annas-kobo"
+} | tools/kobo-sh | tee /dev/stderr | grep -oE '^[0-9a-f]{32}' || true )"
+[ "$GOT" = "$WANT" ] || { echo "binary transfer failed (got '$GOT', want $WANT)" >&2; exit 1; }
+echo "binary ok"
+
+# 3. launcher + NickelMenu entry
+{
+  echo "cat > $DST/annas-kobo.sh <<'EOF_SH'"
+  cat kobo/annas-kobo.sh
+  echo "EOF_SH"
+  echo "chmod +x $DST/annas-kobo.sh"
+  echo "mkdir -p /mnt/onboard/.adds/nm"
+  # replace our block in the NickelMenu config: our menu_item lines and the
+  # indented chain lines that follow them
+  echo "touch /mnt/onboard/.adds/nm/config"
+  echo "awk 'BEGIN{skip=0} /^menu_item:/{skip=(\$0 ~ /Anna.s Kobo|Import books/)} !(skip && (/^menu_item:/ || /^[ \t]/)){print}' /mnt/onboard/.adds/nm/config > /tmp/nm.config"
+  echo "cat >> /tmp/nm.config <<'EOF_NM'"
+  cat kobo/nm-config
+  echo "EOF_NM"
+  echo "mv -f /tmp/nm.config /mnt/onboard/.adds/nm/config"
+  echo "sync; echo installed"
+} | tools/kobo-sh
+echo "deployed annas-kobo ($WANT) to $DST"
