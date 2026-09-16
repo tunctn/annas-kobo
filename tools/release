@@ -1,0 +1,52 @@
+#!/bin/sh
+# Cut a release: bump the version, commit, tag, push. GitHub Actions then
+# builds KoboRoot.tgz and the signed Mac installer and publishes them.
+#
+#   tools/release            next patch version (0.1.1 -> 0.1.2)
+#   tools/release 0.2.0      that version
+#   tools/release --dry-run  show what would happen, change nothing
+#
+# Pushing needs GITHUB_TOKEN, or a token from gh auth, or the personal token
+# in ~/.config/server-wust-co/.env.
+set -eu
+cd "$(dirname "$0")/.."
+export PATH=/opt/homebrew/opt/rustup/bin:/opt/homebrew/bin:$PATH
+
+DRY=0; NEW=""
+for a in "$@"; do
+  case "$a" in --dry-run|-n) DRY=1 ;; *) NEW="$a" ;; esac
+done
+
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "switch to main first" >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "commit or stash your changes first:" >&2; git status --short >&2; exit 1; }
+
+OLD="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)"
+if [ -z "$NEW" ]; then
+  NEW="$(echo "$OLD" | awk -F. '{print $1"."$2"."$3+1}')"
+fi
+! git rev-parse -q --verify "refs/tags/v$NEW" >/dev/null || { echo "v$NEW already exists" >&2; exit 1; }
+
+echo "$OLD -> $NEW"
+sed -i.bak "s/^version = \"$OLD\"/version = \"$NEW\"/" Cargo.toml && rm Cargo.toml.bak
+cargo update -p annas-kobo --offline -q
+cargo test -q >/dev/null
+
+if [ "$DRY" = 1 ]; then
+  git diff --stat
+  git checkout -q Cargo.toml Cargo.lock
+  echo "dry run: nothing committed"
+  exit 0
+fi
+
+git commit -q -am "v$NEW"
+git tag -a "v$NEW" -m "v$NEW"
+
+TOKEN="${GITHUB_TOKEN:-$(gh auth token 2>/dev/null || true)}"
+[ -n "$TOKEN" ] || TOKEN="$(grep TUNCTN_GITHUB_TOKEN ~/.config/server-wust-co/.env 2>/dev/null | cut -d= -f2- | tr -d '"'"'" || true)"
+if [ -n "$TOKEN" ]; then
+  git push -q "https://x-access-token:$TOKEN@github.com/tunctn/annas-kobo.git" main "v$NEW"
+else
+  git push -q origin main "v$NEW"
+fi
+echo "pushed v$NEW. Build and release: https://github.com/tunctn/annas-kobo/actions"
+echo "Release page in about 10 minutes: https://github.com/tunctn/annas-kobo/releases/tag/v$NEW"
