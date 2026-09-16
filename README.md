@@ -1,79 +1,76 @@
 # Anna's Kobo
 
-Search Anna's Archive (and LibGen) from your Kobo, download for free, get a
-KEPUB in your library a few seconds later. One tap in NickelMenu, everything
-runs on the device, no computer involved.
+Search Anna's Archive and LibGen from your Kobo and download books straight
+into the library. Everything runs on the device. No computer needed after
+install.
 
-Built and tested on a Kobo Clara BW, firmware 4.45. Rust, one static binary
-of about 4 MB.
+Built and tested on a Kobo Clara BW, firmware 4.45. Written in Rust, ships
+as one static binary of about 4 MB.
 
 ## Using it
 
-1. NickelMenu → **Anna's Kobo**. A pop-up opens with a search box.
-2. Type a title or author, pick a format (EPUB by default), tap **Search**.
-   The page shows "Searching…" and refreshes itself; results take 5 to 10 s.
-3. Tap **Download** on a result. The Downloads page shows progress:
-   finding a link, downloading, converting to kepub.
-4. When it says done, the Kobo browser shows "File Download … Continue".
-   Tap **Continue**. Nickel adds the book to the library within 2 to 3 s.
+1. Open NickelMenu and tap "Anna's Kobo". A pop-up with a search box opens.
+2. Type a title or author, pick a format (EPUB by default), tap Search.
+   Results take 5 to 10 seconds. The page refreshes itself.
+3. Tap Download on a result. The Downloads page shows progress: finding a
+   link, downloading, converting to kepub.
+4. When it says done, the Kobo browser asks "File Download ... Continue".
+   Tap Continue. The book appears in the library a few seconds later.
 5. Close the pop-up. The book is on Home and in My Books.
 
-Failed downloads have a **Retry** button (mirrors return HTTP 500 now and
-then; the app already walks five of them, three rounds, before giving up).
-"Add to library again" makes a second copy, on purpose.
+Failed downloads have a Retry button. Mirrors fail now and then, and the app
+already tries several before giving up. "Add to library again" makes a second
+copy.
 
-**Settings** (top bar): optional Anna's Archive membership key (enables
-Anna's fast servers; without one, books come from LibGen's free servers),
-fixed mirrors, search source, delivery mode, kepub on/off.
+Settings (top bar): optional Anna's Archive membership key, fixed mirrors,
+search source, delivery mode, kepub on or off. Without a membership key,
+books come from LibGen's free servers.
 
 ## Install
 
-You need [NickelMenu](https://pgaskin.net/NickelMenu/) on the Kobo (its own
-`KoboRoot.tgz`, same procedure as below).
+You need [NickelMenu](https://pgaskin.net/NickelMenu/) on the Kobo. It
+installs the same way as this package.
 
-### One click, over USB
+### Over USB
 
 1. Download `KoboRoot.tgz` from the
    [latest release](https://github.com/tunctn/annas-kobo/releases/latest).
-2. Plug the Kobo in, tap Connect on it, and copy the file into the `.kobo`
-   folder of the `KOBOeReader` drive.
-3. Eject, unplug, and reboot the Kobo (hold power → Power off → on). It
+2. Plug the Kobo in, tap Connect, and copy the file into the `.kobo` folder
+   of the `KOBOeReader` drive.
+3. Eject, unplug, and reboot the Kobo (hold power, Power off, then on). It
    shows the update animation for a few seconds and restarts. "Anna's Kobo"
    is now in NickelMenu.
 
-The package is the standard Kobo add-on format: at boot `/etc/init.d/rcS`
-extracts it over `/`, so it drops `annas-kobo` and its launcher into
-`.adds/annas-kobo/` and one file into `.adds/nm/` with the menu lines. Your
-own NickelMenu config is not touched. Updating is the same step again.
+This is the standard Kobo add-on format. At boot the firmware extracts the
+package over `/`, which puts the app in `.adds/annas-kobo/` and one menu
+file in `.adds/nm/`. Your own NickelMenu config is not touched. To update,
+repeat the steps.
 
-### One command, over USB
-
-With the Kobo plugged in:
+Or, with the Kobo plugged in, run:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tunctn/annas-kobo/main/tools/install-usb | sh
 ```
 
-or from a checkout, `tools/install-usb` (uses `dist/KoboRoot.tgz` if you
-built one, else downloads the latest release). It finds the mounted drive,
-copies the package into `.kobo/`, ejects. Then unplug and reboot the Kobo.
+This finds the mounted drive, copies the package into `.kobo/`, and ejects.
+Then unplug and reboot the Kobo. From a checkout, `tools/install-usb` does
+the same and uses `dist/KoboRoot.tgz` if you built one.
 
 ### Over Wi-Fi (development)
 
 Enable ssh once: on the USB drive rename `.kobo/ssh-disabled` to
 `.kobo/ssh-enabled`, eject, reboot. The first `ssh root@<kobo-ip>` asks you
-to set a root password (scripted sessions hang on that prompt until it is
-answered). Put your public key in `/.ssh/authorized_keys` on the device.
+to set a root password. Put your public key in `/.ssh/authorized_keys` on
+the device.
 
 ```sh
 tools/build     # cross-compile
-tools/deploy    # serve the binary over HTTP, Kobo pulls it with wget,
-                # installs the launcher and the NickelMenu file, restarts
-tools/package   # dist/KoboRoot.tgz, what the release workflow ships
+tools/deploy    # copy the binary, launcher and menu file to the Kobo, restart the app
+tools/package   # build dist/KoboRoot.tgz
 ```
 
-`tools/deploy` reads `KOBO_HOST` (default 192.168.0.215), `KOBO_KEY`
-(default `~/.ssh/id_ed25519_personal`) and `MAC_IP` from the environment.
+`tools/deploy` reads `KOBO_HOST`, `KOBO_KEY` (ssh private key) and `MAC_IP`
+from the environment.
 
 Signing out of the Kobo account wipes `.kobo`, including the ssh marker and
 the root password. Everything under `.adds` survives.
@@ -84,61 +81,48 @@ Delete `.adds/annas-kobo/` and `.adds/nm/annas-kobo` over USB.
 
 ## How it works
 
-- **Search.** Anna's Archive first. Its search pages currently sit behind a
-  DDoS-Guard JavaScript check that a non-browser client cannot pass (a free
-  account's login cookie does not skip it either, tested 2026-09-15). When
-  the check appears the app remembers it for six hours and searches LibGen
-  instead, which serves the same files under the same md5 identifiers, and
-  says so on the results page. Searches run in the background; the page
-  polls.
-- **Download.** With a membership key: Anna's `dyn/api/fast_download.json`
-  (the only Anna's endpoint not behind the check). Otherwise, or if that
-  fails: LibGen's `ads.php?md5=` page → `get.php` link → CDN. Anna's own
-  slow downloads need the browser check, a wait and a captcha, so they are
-  not used.
-- **Kepub.** EPUBs are converted on the device with
+- Search goes to Anna's Archive first. Its search pages sit behind a
+  DDoS-Guard browser check that the app cannot pass. When that happens the
+  app switches to LibGen for six hours and says so on the results page.
+  LibGen serves the same files under the same md5 identifiers.
+- Downloads use Anna's fast download API when you have a membership key.
+  Otherwise, or if that fails, they go through LibGen's free download page.
+  Anna's own slow downloads need a browser, a wait and a captcha, so the app
+  does not use them.
+- EPUBs are converted to KEPUB on the device with
   [kepub-rs](https://github.com/tiago-cos/kepub-rs), a Rust port of
-  [kepubify](https://github.com/pgaskin/kepubify): about 2 s per book on the
-  Clara BW. Kobo's reader then gets fast page turns, stats and proper
-  highlights.
-- **Into the library.** Finished books wait in RAM (`/tmp/annas-kobo`) and
-  the Downloads page hands them to the Kobo browser as an attachment
-  (`/file/<id>`). Nickel's browser controller (`N3BrowserControllerBase::
-  startDownload → parseDownloadedFiles → onDownloadedFileSynced`) saves the
-  file to the storage root and runs `N3FSSyncManager::sync`, the same call
-  its Google Drive integration uses. Measured: 2 to 3 s from hand-off to
-  "Side-loading … as a book" in Nickel's log. The books must not wait under
-  `/mnt/onboard`: Nickel scans every folder there, dot-folders included,
-  and would import the waiting copy too (it also imports any `.txt`, which
-  is why the log is `annas-kobo.log`).
-- **Folder mode** (Settings) saves to `/mnt/onboard/Books` instead. Nickel
-  then needs a rescan: a NickelMenu entry
-  `menu_item:main:Import books:nickel_misc:rescan_books` (shows the
-  blocking "Importing content" dialog) or NickelDBus. The old fake-USB-plug
-  trick through `/tmp/nickel-hardware-status` only shows the connect dialog
-  on firmware 4.45 and imports nothing.
-- **Mirrors.** Picked from [open-slum.org](https://open-slum.org/) in order
-  of reported health, probed, cached for 30 minutes, warmed at startup.
-  Overrides in Settings.
-- **Loopback.** Nickel never brings `lo` up, so the launcher runs
-  `ifconfig lo up`; without it the pop-up sits on "Loading…" forever.
+  [kepubify](https://github.com/pgaskin/kepubify). It takes about 2 seconds
+  per book on the Clara BW.
+- Finished books wait in RAM under `/tmp/annas-kobo`. The Downloads page
+  hands them to the Kobo browser as a file download, and Nickel imports the
+  file the same way it imports Google Drive downloads. Books must not wait
+  under `/mnt/onboard`, because Nickel scans every folder there and would
+  import the waiting copy too.
+- Folder mode (in Settings) saves to `/mnt/onboard/Books` instead. Nickel
+  then needs a rescan, either through NickelDBus or a NickelMenu entry:
+  `menu_item:main:Import books:nickel_misc:rescan_books`.
+- Mirrors come from [open-slum.org](https://open-slum.org/), sorted by
+  reported health, probed, and cached for 30 minutes. You can override them
+  in Settings.
+- Nickel never brings the loopback interface up, so the launcher runs
+  `ifconfig lo up` first. Without it the pop-up never loads.
 
-The UI is plain server-rendered HTML for the Kobo's old WebKit: big
-buttons, black on white, meta-refresh for progress, no JavaScript.
+The UI is plain server-rendered HTML for the Kobo's old WebKit: big buttons,
+black on white, meta-refresh for progress, no JavaScript.
 
 ## Files on the device
 
 ```
 /mnt/onboard/.adds/annas-kobo/annas-kobo      the service (listens on 0.0.0.0:8484)
-/mnt/onboard/.adds/annas-kobo/annas-kobo.sh   launcher: lo up, start service, wait for it
+/mnt/onboard/.adds/annas-kobo/annas-kobo.sh   launcher
 /mnt/onboard/.adds/annas-kobo/config.json     settings (also editable over USB)
 /mnt/onboard/.adds/annas-kobo/annas-kobo.log  log
 /tmp/annas-kobo/                              finished books waiting for the browser (RAM)
 /mnt/onboard/Books/                           downloads in folder mode
 ```
 
-Diagnostics from any machine on the LAN: `http://<kobo-ip>:8484/log`
-(app log) and `http://<kobo-ip>:8484/syslog?n=500` (Nickel's syslog).
+From any machine on the same network, `http://<kobo-ip>:8484/log` shows the
+app log and `http://<kobo-ip>:8484/syslog?n=500` shows Nickel's syslog.
 
 ## Command line
 
@@ -150,8 +134,8 @@ annas-kobo kepubify FILE...
 annas-kobo mirrors
 ```
 
-All of it runs on a Mac too (`cargo run -- serve`, then open
-http://127.0.0.1:8484/), which is how the UI is developed.
+It also runs on a Mac: `cargo run -- serve`, then open
+http://127.0.0.1:8484/.
 
 ## Development
 
@@ -169,8 +153,7 @@ tools/kobo-shot shot.png                    # screenshot (needs koboterm on the 
 ```
 
 `tools/kobo-sh` feeds a script to the Kobo through the stock sshd's
-interactive shell (it serves no commands, scp or sftp). Cold-cache network
-work on the device can take a minute; give it time.
+interactive shell, since it supports no scp or sftp.
 
 ## Layout
 
@@ -180,9 +163,9 @@ work on the device can take a minute; give it time.
 | `src/web.rs`, `src/pages.rs` | HTTP server, background searches, HTML pages |
 | `src/annas.rs` | Anna's Archive search parsing, challenge detection, fast download API |
 | `src/libgen.rs` | LibGen search parsing and free download links |
-| `src/slum.rs` | open-slum.org parsing, mirror probing, cache, blocked-state memory |
+| `src/slum.rs` | open-slum.org parsing, mirror probing, cache |
 | `src/jobs.rs` | download queue, mirror walking, file naming, conversion, hand-off |
-| `src/kepub.rs` | EPUB → KEPUB via kepub-rs |
+| `src/kepub.rs` | EPUB to KEPUB via kepub-rs |
 | `src/nickel.rs` | Nickel detection, NickelDBus rescan for folder mode |
 | `src/config.rs` | `config.json` |
 | `kobo/` | launcher script and the NickelMenu file |
