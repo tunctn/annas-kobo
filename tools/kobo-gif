@@ -1,0 +1,49 @@
+#!/bin/sh
+# Record a stop-motion GIF of the Kobo for the README.
+#
+# Press Enter to grab a frame (about 3 s each via tools/kobo-shot), type a
+# label first to name the frame, or `q` to stop and stitch. Frames stay in the
+# frames dir so you can delete or reorder them and re-stitch with `--stitch`.
+#
+# usage: tools/kobo-gif [out.gif]           record, then stitch
+#        tools/kobo-gif --stitch [out.gif]  stitch existing frames only
+# env:   FRAMES=docs/frames  HOLD=1.5 (s per frame)  LAST=3 (s on final frame)  WIDTH=400
+set -eu
+HERE="$(cd "$(dirname "$0")" && pwd)"
+FRAMES="${FRAMES:-docs/frames}"
+HOLD="${HOLD:-1.5}"; LAST="${LAST:-3}"; WIDTH="${WIDTH:-400}"
+STITCH_ONLY=0
+[ "${1:-}" = "--stitch" ] && { STITCH_ONLY=1; shift; }
+OUT="${1:-docs/demo.gif}"
+command -v ffmpeg >/dev/null || { echo "kobo-gif: ffmpeg not found (brew install ffmpeg)" >&2; exit 1; }
+mkdir -p "$FRAMES" "$(dirname "$OUT")"
+
+if [ "$STITCH_ONLY" = 0 ]; then
+  n=$(ls "$FRAMES"/*.png 2>/dev/null | wc -l | tr -d ' ')
+  echo "Frames go to $FRAMES/ (starting at $((n + 1))). Enter = grab, label+Enter = grab with name, q = finish."
+  while :; do
+    printf '[%d frames] > ' "$n"
+    read -r label || label=q
+    [ "$label" = "q" ] && break
+    n=$((n + 1))
+    slug=$(printf '%s' "$label" | tr -cs 'A-Za-z0-9' '-' | sed 's/^-//; s/-$//')
+    f=$(printf '%s/%02d%s.png' "$FRAMES" "$n" "${slug:+-$slug}")
+    "$HERE/kobo-shot" "$f"
+  done
+fi
+
+set -- "$FRAMES"/*.png
+[ -e "$1" ] || { echo "kobo-gif: no frames in $FRAMES" >&2; exit 1; }
+LIST="$(mktemp)"; trap 'rm -f "$LIST"' EXIT
+i=0
+for f in "$@"; do
+  i=$((i + 1))
+  echo "file '$(cd "$(dirname "$f")" && pwd)/$(basename "$f")'" >> "$LIST"
+  [ "$i" -eq $# ] && echo "duration $LAST" >> "$LIST" || echo "duration $HOLD" >> "$LIST"
+done
+# concat demuxer ignores the last duration unless the final file is repeated
+echo "file '$(cd "$(dirname "$f")" && pwd)/$(basename "$f")'" >> "$LIST"
+ffmpeg -loglevel error -y -f concat -safe 0 -i "$LIST" \
+  -vf "scale=$WIDTH:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=32:stats_mode=diff[p];[b][p]paletteuse=dither=none" \
+  -loop 0 "$OUT"
+echo "$OUT: $# frames, $(du -h "$OUT" | cut -f1)"
