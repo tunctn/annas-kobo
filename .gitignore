@@ -3,3 +3,4 @@
 *.epub
 *.part
 /dist
+/docs/frames

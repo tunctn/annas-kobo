@@ -4,6 +4,8 @@ Search Anna's Archive and LibGen from your Kobo and download books straight
 into the library. Everything runs on the device. No computer needed after
 install.
 
+![Searching, downloading and opening a book on the Kobo](docs/demo.gif)
+
 Built and tested on a Kobo Clara BW, firmware 4.45. Written in Rust, ships
 as one static binary of about 4 MB.
 
