@@ -32,25 +32,20 @@ books come from LibGen's free servers.
 
 ### From a Mac
 
-Plug the Kobo in over USB, tap Connect on its screen, then run:
+1. Download `AnnasKoboInstaller.zip` from the
+   [latest release](https://github.com/tunctn/annas-kobo/releases/latest)
+   and unzip it.
+2. Plug the Kobo in over USB and tap Connect on its screen.
+3. Open "Anna's Kobo Installer". It installs NickelMenu if the Kobo does not
+   have it, installs or updates Anna's Kobo, and ejects the Kobo.
+4. Unplug the Kobo and restart it (hold power, tap Power off, then turn it
+   on). It shows an update screen for a few seconds. "Anna's Kobo" is now in
+   NickelMenu.
+
+The same installer runs from a terminal, with the same dialogs:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tunctn/annas-kobo/main/tools/install-usb | sh
-```
-
-It installs NickelMenu if the Kobo does not have it, installs or updates
-Anna's Kobo, and ejects the Kobo. Unplug the Kobo and restart it (hold
-power, tap Power off, then turn it on). It shows an update screen for a few
-seconds. "Anna's Kobo" is now in NickelMenu.
-
-The same installer comes as an app, `AnnasKoboInstaller.zip` on the
-[latest release](https://github.com/tunctn/annas-kobo/releases/latest).
-It is not signed with an Apple certificate, so macOS blocks it on first
-launch. Click Done, then open System Settings, Privacy & Security, scroll
-down and click Open Anyway. Or remove the block from a terminal:
-
-```sh
-xattr -dr com.apple.quarantine ~/Downloads/Anna\'s\ Kobo\ Installer.app
 ```
 
 ### By hand
@@ -80,7 +75,7 @@ the device.
 tools/build     # cross-compile
 tools/deploy    # copy the binary, launcher and menu file to the Kobo, restart the app
 tools/package   # build dist/KoboRoot.tgz
-tools/package-installer   # build dist/AnnasKoboInstaller.zip, the Mac app
+tools/package-installer   # build, sign and notarize the Mac installer app
 ```
 
 `tools/deploy` reads `KOBO_HOST`, `KOBO_KEY` (ssh private key) and `MAC_IP`
@@ -184,9 +179,9 @@ interactive shell, since it supports no scp or sftp.
 | `src/nickel.rs` | Nickel detection, NickelDBus rescan for folder mode |
 | `src/config.rs` | `config.json` |
 | `kobo/` | launcher script and the NickelMenu file |
-| `mac/` | Info.plist of the installer app |
+| `mac/` | launcher and Info.plist of the installer app |
 | `tools/` | build, package, package-installer, deploy, install-usb, kobo-sh, kobo-shot |
-| `.github/workflows/release.yml` | builds `KoboRoot.tgz` and the installer on a `v*` tag |
+| `.github/workflows/release.yml` | on a `v*` tag: builds `KoboRoot.tgz`, signs and notarizes the installer |
 
 ## License
 
