@@ -1,21 +1,42 @@
 #!/bin/sh
 # Build dist/AnnasKoboInstaller.zip: a Mac app that wraps tools/install-usb.
 # Double-clicking it finds the Kobo over USB, installs NickelMenu if needed,
-# installs or updates Anna's Kobo, and ejects. It has no Apple signature, so
-# macOS blocks the first launch until Open Anyway in Privacy & Security.
+# installs or updates Anna's Kobo, and ejects. Runs on a Mac only (clang,
+# codesign, notarytool).
+#
+# Signing uses CODESIGN_IDENTITY, or the Developer ID Application identity in
+# the keychain if there is exactly one. Notarization runs when
+# NOTARY_APPLE_ID, NOTARY_TEAM_ID and NOTARY_PASSWORD (an app-specific
+# password) are set. Without them the app is built but blocked by Gatekeeper.
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)"
 APP="dist/Anna's Kobo Installer.app"
-rm -rf "$APP"
+ZIP=dist/AnnasKoboInstaller.zip
+
+rm -rf "$APP" "$ZIP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 sed "s/@VERSION@/$VERSION/g" mac/Info.plist > "$APP/Contents/Info.plist"
 cp tools/install-usb "$APP/Contents/Resources/install-usb"
-cat > "$APP/Contents/MacOS/installer" <<'SH'
-#!/bin/sh
-GUI=1 exec "$(dirname "$0")/../Resources/install-usb"
-SH
-chmod 755 "$APP/Contents/MacOS/installer" "$APP/Contents/Resources/install-usb"
-rm -f dist/AnnasKoboInstaller.zip
-(cd dist && zip -qr AnnasKoboInstaller.zip "Anna's Kobo Installer.app")
-ls -la dist/AnnasKoboInstaller.zip
+chmod 755 "$APP/Contents/Resources/install-usb"
+clang -O2 -mmacosx-version-min=10.13 -arch arm64 -arch x86_64 \
+  -o "$APP/Contents/MacOS/installer" mac/launcher.c
+
+IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p')}"
+if [ -z "$IDENTITY" ] || [ "$(printf '%s\n' "$IDENTITY" | wc -l)" -ne 1 ]; then
+  echo "not signed: no single Developer ID Application identity (set CODESIGN_IDENTITY)"
+else
+  codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+  codesign --verify --strict --verbose=2 "$APP"
+  if [ -n "${NOTARY_APPLE_ID:-}" ] && [ -n "${NOTARY_TEAM_ID:-}" ] && [ -n "${NOTARY_PASSWORD:-}" ]; then
+    ditto -c -k --keepParent "$APP" "$ZIP"
+    xcrun notarytool submit "$ZIP" --wait \
+      --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD"
+    xcrun stapler staple "$APP"
+    rm -f "$ZIP"
+  else
+    echo "not notarized: NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD not set"
+  fi
+fi
+ditto -c -k --keepParent "$APP" "$ZIP"
+ls -la "$ZIP"
