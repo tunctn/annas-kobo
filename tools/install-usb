@@ -1,0 +1,21 @@
+#!/bin/sh
+# One-command USB install: with the Kobo plugged in, copies dist/KoboRoot.tgz
+# (built here, or the latest GitHub release when this repo is not around)
+# into .kobo/ on the drive and ejects it. The Kobo installs it on the next
+# boot; reboot it after unplugging (hold power, Power off, then on).
+set -eu
+HERE="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || true)"
+TGZ="${1:-$HERE/dist/KoboRoot.tgz}"
+VOL="$(ls -d /Volumes/KOBOeReader /media/*/KOBOeReader /run/media/*/KOBOeReader 2>/dev/null | head -1 || true)"
+[ -n "$VOL" ] || { echo "Kobo not found: plug it in over USB and tap Connect on the device" >&2; exit 1; }
+if [ ! -f "$TGZ" ]; then
+  TGZ="$(mktemp -d)/KoboRoot.tgz"
+  echo "downloading the latest release ..."
+  curl -fsSL -o "$TGZ" https://github.com/tunctn/annas-kobo/releases/latest/download/KoboRoot.tgz
+fi
+[ -f "$VOL/.adds/nm/config" ] || [ -d "$VOL/.adds/nm" ] || \
+  echo "note: NickelMenu is not installed on this Kobo; install it first (https://pgaskin.net/NickelMenu/)" >&2
+cp "$TGZ" "$VOL/.kobo/KoboRoot.tgz"
+sync
+if command -v diskutil >/dev/null; then diskutil eject "$VOL" >/dev/null; else udisksctl unmount -b "$(df --output=source "$VOL" | tail -1)" >/dev/null 2>&1 || umount "$VOL"; fi
+echo "copied. Unplug the Kobo and reboot it: it installs Anna's Kobo during boot."

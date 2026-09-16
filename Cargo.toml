@@ -2,6 +2,10 @@
 name = "annas-kobo"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-3.0-or-later"
+authors = ["Tunç Türkmen"]
+description = "Search Anna's Archive and LibGen from a Kobo, download, kepubify, into the library"
+repository = "https://github.com/tunctn/annas-kobo"
 
 [dependencies]
 form_urlencoded = "1.2.2"

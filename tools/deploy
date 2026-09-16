@@ -46,14 +46,13 @@ echo "binary ok"
   echo "EOF_SH"
   echo "chmod +x $DST/annas-kobo.sh"
   echo "mkdir -p /mnt/onboard/.adds/nm"
-  # replace our block in the NickelMenu config: our menu_item lines and the
-  # indented chain lines that follow them
-  echo "touch /mnt/onboard/.adds/nm/config"
-  echo "awk 'BEGIN{skip=0} /^menu_item:/{skip=(\$0 ~ /Anna.s Kobo|Import books/)} !(skip && (/^menu_item:/ || /^[ \t]/)){print}' /mnt/onboard/.adds/nm/config > /tmp/nm.config"
-  echo "cat >> /tmp/nm.config <<'EOF_NM'"
-  cat kobo/nm-config
+  # NickelMenu lines live in their own file; strip any lines an older deploy
+  # appended to the user's config
+  echo "mkdir -p /mnt/onboard/.adds/nm"
+  echo "if [ -f /mnt/onboard/.adds/nm/config ]; then awk 'BEGIN{skip=0} /^menu_item:/{skip=(\$0 ~ /Anna.s Kobo|Import books/)} !(skip && (/^menu_item:/ || /^[ \t]/)){print}' /mnt/onboard/.adds/nm/config > /tmp/nm.config && mv -f /tmp/nm.config /mnt/onboard/.adds/nm/config; fi"
+  echo "cat > /mnt/onboard/.adds/nm/annas-kobo <<'EOF_NM'"
+  cat kobo/nm-annas-kobo
   echo "EOF_NM"
-  echo "mv -f /tmp/nm.config /mnt/onboard/.adds/nm/config"
   echo "sync; echo installed"
 } | tools/kobo-sh
 echo "deployed annas-kobo ($WANT) to $DST"

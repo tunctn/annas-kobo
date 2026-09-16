@@ -1,0 +1,29 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-musleabihf
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.1
+      - run: cargo install cargo-zigbuild --locked
+      - run: cargo test
+      - run: cargo zigbuild --release --target armv7-unknown-linux-musleabihf
+      - run: tools/package
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/KoboRoot.tgz
+            dist/annas-kobo
+          generate_release_notes: true

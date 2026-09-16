@@ -28,19 +28,37 @@ fixed mirrors, search source, delivery mode, kepub on/off.
 
 ## Install
 
-You need [NickelMenu](https://pgaskin.net/NickelMenu/) on the Kobo.
+You need [NickelMenu](https://pgaskin.net/NickelMenu/) on the Kobo (its own
+`KoboRoot.tgz`, same procedure as below).
 
-### Over USB (no ssh needed)
+### One click, over USB
 
-1. Build: `tools/build` (needs Rust, `zig`, `cargo-zigbuild`, and the
-   `armv7-unknown-linux-musleabihf` target; see Development).
-2. Plug the Kobo in. On the `KOBOeReader` drive create `.adds/annas-kobo/`
-   and copy in `target/armv7-unknown-linux-musleabihf/release/annas-kobo`
-   and `kobo/annas-kobo.sh`.
-3. Append the contents of `kobo/nm-config` to `.adds/nm/config`.
-4. Eject. NickelMenu picks up the new entry on its next open.
+1. Download `KoboRoot.tgz` from the
+   [latest release](https://github.com/tunctn/annas-kobo/releases/latest).
+2. Plug the Kobo in, tap Connect on it, and copy the file into the `.kobo`
+   folder of the `KOBOeReader` drive.
+3. Eject, unplug, and reboot the Kobo (hold power → Power off → on). It
+   shows the update animation for a few seconds and restarts. "Anna's Kobo"
+   is now in NickelMenu.
 
-### Over Wi-Fi (developer route)
+The package is the standard Kobo add-on format: at boot `/etc/init.d/rcS`
+extracts it over `/`, so it drops `annas-kobo` and its launcher into
+`.adds/annas-kobo/` and one file into `.adds/nm/` with the menu lines. Your
+own NickelMenu config is not touched. Updating is the same step again.
+
+### One command, over USB
+
+With the Kobo plugged in:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tunctn/annas-kobo/main/tools/install-usb | sh
+```
+
+or from a checkout, `tools/install-usb` (uses `dist/KoboRoot.tgz` if you
+built one, else downloads the latest release). It finds the mounted drive,
+copies the package into `.kobo/`, ejects. Then unplug and reboot the Kobo.
+
+### Over Wi-Fi (development)
 
 Enable ssh once: on the USB drive rename `.kobo/ssh-disabled` to
 `.kobo/ssh-enabled`, eject, reboot. The first `ssh root@<kobo-ip>` asks you
@@ -50,7 +68,8 @@ answered). Put your public key in `/.ssh/authorized_keys` on the device.
 ```sh
 tools/build     # cross-compile
 tools/deploy    # serve the binary over HTTP, Kobo pulls it with wget,
-                # installs the launcher and the NickelMenu lines, restarts
+                # installs the launcher and the NickelMenu file, restarts
+tools/package   # dist/KoboRoot.tgz, what the release workflow ships
 ```
 
 `tools/deploy` reads `KOBO_HOST` (default 192.168.0.215), `KOBO_KEY`
@@ -58,6 +77,10 @@ tools/deploy    # serve the binary over HTTP, Kobo pulls it with wget,
 
 Signing out of the Kobo account wipes `.kobo`, including the ssh marker and
 the root password. Everything under `.adds` survives.
+
+### Uninstall
+
+Delete `.adds/annas-kobo/` and `.adds/nm/annas-kobo` over USB.
 
 ## How it works
 
@@ -162,5 +185,10 @@ work on the device can take a minute; give it time.
 | `src/kepub.rs` | EPUB → KEPUB via kepub-rs |
 | `src/nickel.rs` | Nickel detection, NickelDBus rescan for folder mode |
 | `src/config.rs` | `config.json` |
-| `kobo/` | launcher script and NickelMenu lines |
-| `tools/` | build, deploy, kobo-sh, kobo-shot |
+| `kobo/` | launcher script and the NickelMenu file |
+| `tools/` | build, package, deploy, install-usb, kobo-sh, kobo-shot |
+| `.github/workflows/release.yml` | builds `KoboRoot.tgz` on a `v*` tag |
+
+## License
+
+GPL-3.0-or-later. Copyright (C) 2026 Tunç Türkmen. kepub-rs is MIT.
