@@ -76,7 +76,6 @@ tools/build     # cross-compile
 tools/deploy    # copy the binary, launcher and menu file to the Kobo, restart the app
 tools/package   # build dist/KoboRoot.tgz
 tools/package-installer   # build, sign and notarize the Mac installer app
-tools/release             # bump the version, tag, push: CI publishes the release
 ```
 
 `tools/deploy` reads `KOBO_HOST`, `KOBO_KEY` (ssh private key) and `MAC_IP`
@@ -166,6 +165,12 @@ tools/kobo-gif                              # stop-motion GIF: Enter per frame, 
 `tools/kobo-sh` feeds a script to the Kobo through the stock sshd's
 interactive shell, since it supports no scp or sftp.
 
+## Releasing
+
+GitHub, Actions tab, "release", Run workflow. Leave the version empty for
+the next patch version. About 10 minutes later the release has
+`KoboRoot.tgz` and the notarized Mac installer.
+
 ## Layout
 
 | file | role |
@@ -181,8 +186,8 @@ interactive shell, since it supports no scp or sftp.
 | `src/config.rs` | `config.json` |
 | `kobo/` | launcher script and the NickelMenu file |
 | `mac/` | launcher and Info.plist of the installer app |
-| `tools/` | build, package, package-installer, release, deploy, install-usb, kobo-sh, kobo-shot, kobo-gif |
-| `.github/workflows/release.yml` | on a `v*` tag: builds `KoboRoot.tgz`, signs and notarizes the installer |
+| `tools/` | build, package, package-installer, deploy, install-usb, kobo-sh, kobo-shot, kobo-gif |
+| `.github/workflows/release.yml` | Run workflow in the Actions tab: bumps the version, tags, builds, signs, publishes |
 
 ## License
 

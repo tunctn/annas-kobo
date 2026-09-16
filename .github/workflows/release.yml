@@ -1,15 +1,47 @@
+# Release: Actions tab, "release", Run workflow. Leave the version empty for
+# the next patch version. It bumps Cargo.toml, commits, tags, builds
+# KoboRoot.tgz, signs and notarizes the Mac installer, and publishes the
+# release. Nothing else triggers it.
 name: release
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, like 0.2.0 (empty: next patch version)"
+        required: false
+        default: ""
 permissions:
   contents: write
 jobs:
-  build:
+  tag:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - id: bump
+        env:
+          WANTED: ${{ inputs.version }}
+        run: |
+          OLD=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)
+          NEW="$WANTED"
+          [ -n "$NEW" ] || NEW=$(echo "$OLD" | awk -F. '{print $1"."$2"."$3+1}')
+          if git ls-remote --exit-code --tags origin "v$NEW" >/dev/null; then echo "v$NEW already exists" >&2; exit 1; fi
+          sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" Cargo.toml
+          sed -i "/^name = \"annas-kobo\"$/{n;s/^version = \"$OLD\"/version = \"$NEW\"/}" Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "v$NEW"
+          git tag -a "v$NEW" -m "v$NEW"
+          git push origin HEAD "v$NEW"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+  build:
+    runs-on: ubuntu-latest
+    needs: tag
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.tag.outputs.version }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: armv7-unknown-linux-musleabihf
@@ -21,17 +53,19 @@ jobs:
       - run: cargo zigbuild --release --target armv7-unknown-linux-musleabihf
       - run: tools/package
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
+          tag_name: v${{ needs.tag.outputs.version }}
           files: |
             dist/KoboRoot.tgz
             dist/annas-kobo
           generate_release_notes: true
   installer:
     runs-on: macos-latest
-    needs: build
+    needs: [tag, build]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.tag.outputs.version }}
       - name: Import the Developer ID certificate
         env:
           CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
@@ -50,6 +84,6 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
+          tag_name: v${{ needs.tag.outputs.version }}
           files: dist/AnnasKoboInstaller.zip
