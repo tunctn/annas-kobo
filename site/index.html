@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anna's Kobo</title>
+<meta name="description" content="Search Anna's Archive and LibGen from your Kobo. Tap Download and the book is in your library a few seconds later. Free, GPL, runs on the device.">
+<meta property="og:title" content="Anna's Kobo">
+<meta property="og:description" content="Anna's Archive on your Kobo. Search, tap Download, read. No computer in the loop.">
+<meta property="og:image" content="https://annas-kobo.tunc.co/img/step-library.png">
+<meta property="og:url" content="https://annas-kobo.tunc.co/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f4f1ea'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' text-anchor='middle' fill='%23262320'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="wrap nav-edge">
+  <a class="wordmark" href="/">Anna's Kobo</a>
+  <a class="link" href="https://github.com/tunctn/annas-kobo">GitHub</a>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <h1 class="reveal" style="--i:0">Anna's Archive, on your Kobo.</h1>
+    <p class="lede reveal" style="--i:1">Search from the e-reader, tap Download, and the book is in your library a few seconds later. No computer, no cable.</p>
+
+    <div class="hero-grid">
+      <figure class="capture reveal" style="--i:2">
+        <img src="img/demo.gif" width="400" height="540" alt="A Kobo screen: searching for Ulysses, tapping Download, the book appearing in My Books" fetchpriority="high">
+        <figcaption>A real session on a Kobo Clara BW, as a stop-motion GIF.</figcaption>
+      </figure>
+
+      <div class="side reveal" style="--i:3">
+        <div class="actions">
+          <a class="btn" href="https://github.com/tunctn/annas-kobo/releases/latest/download/AnnasKoboInstaller.zip">Download for Mac <span class="arrow">&rarr;</span></a>
+          <a class="btn quiet" href="https://github.com/tunctn/annas-kobo">View on GitHub</a>
+        </div>
+        <p class="fine">Plug the Kobo in, open the installer, restart the Kobo. It installs NickelMenu too if the Kobo does not have it.</p>
+        <p class="fine">Free, GPL-3.0. Windows and Linux: <a href="#install">install by hand</a>.</p>
+    <table class="spec-sheet">
+          <tr><th>Runs on</th><td>The Kobo itself. One static binary, about 4 MB, written in Rust.</td></tr>
+          <tr><th>Tested on</th><td>Kobo Clara BW, firmware 4.45. Other models with NickelMenu should work; reports welcome.</td></tr>
+          <tr><th>Sources</th><td>Anna's Archive and LibGen. Downloads come from LibGen's free servers, or from Anna's fast servers if you add a membership key in Settings.</td></tr>
+          <tr><th>Formats</th><td>Whatever the source lists. EPUBs are converted to KEPUB on the device with <a href="https://github.com/tiago-cos/kepub-rs">kepub-rs</a>.</td></tr>
+          <tr><th>Needs</th><td><a href="https://pgaskin.net/NickelMenu/">NickelMenu</a>. The Mac installer adds it for you.</td></tr>
+          <tr><th>Price</th><td>Free. GPL-3.0-or-later. <a href="https://github.com/tunctn/annas-kobo">Source on GitHub</a>.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap steps">
+    <h2>Four taps, on the device.</h2>
+    <ol class="step-list">
+      <li class="step">
+        <figure><img src="img/step-search.png" width="536" height="724" alt="The search page on the Kobo with 'ulysses' typed in and the on-screen keyboard open" loading="lazy"></figure>
+        <div class="text">
+          <span class="stage">1 / 4</span>
+          <h3>Search</h3>
+          <p>Open Anna's Kobo from NickelMenu and type a title or author. Anna's Archive first. When its search pages are behind the browser check, the app asks LibGen instead and says so. Same files, same md5s.</p>
+        </div>
+      </li>
+      <li class="step">
+        <figure><img src="img/step-results.png" width="536" height="724" alt="Six search results for 'ulysses james joyce' on the Kobo" loading="lazy"></figure>
+        <div class="text">
+          <span class="stage">2 / 4</span>
+          <h3>Pick one</h3>
+          <p>Results show the format and size. EPUB is the default filter. Tap Download.</p>
+        </div>
+      </li>
+      <li class="step">
+        <figure><img src="img/step-download.png" width="536" height="724" alt="The Downloads page showing Ulysses at 38 percent with a progress bar" loading="lazy"></figure>
+        <div class="text">
+          <span class="stage">3 / 4</span>
+          <h3>Wait a few seconds</h3>
+          <p>The download runs on the Kobo. EPUBs are converted to KEPUB on the device, about two seconds a book, so you get Kobo's page turns, reading stats and highlights.</p>
+          <p>Mirrors fail now and then. The app walks several before it gives up, and there is a Retry button.</p>
+        </div>
+      </li>
+      <li class="step">
+        <figure><img src="img/step-library.png" width="536" height="724" alt="The Kobo's My Books list with Ulysses by James Joyce at the top" loading="lazy"></figure>
+        <div class="text">
+          <span class="stage">4 / 4</span>
+          <h3>Read</h3>
+          <p>Tap Continue in the download dialog. The book is in My Books and on the home screen, like any other Kobo book.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="wrap install" id="install">
+    <h2>Install.</h2>
+    <div class="ways">
+      <div class="way">
+        <h3>From a Mac</h3>
+        <ol>
+          <li>Download <a href="https://github.com/tunctn/annas-kobo/releases/latest/download/AnnasKoboInstaller.zip">the installer</a> and unzip it.</li>
+          <li>Plug the Kobo in over USB and tap Connect on its screen.</li>
+          <li>Open Anna's Kobo Installer. It ejects the Kobo when done.</li>
+          <li>Unplug the Kobo and restart it: hold power, tap Power off, turn it on.</li>
+        </ol>
+        <p>The Kobo shows an update screen for a few seconds. Anna's Kobo is then in NickelMenu. Run the installer again later to update.</p>
+      </div>
+      <div class="way">
+        <h3>From a terminal</h3>
+        <p>Same steps, same dialogs, no download:</p>
+<pre>curl -fsSL https://raw.githubusercontent.com/tunctn/annas-kobo/main/tools/install-usb | sh</pre>
+      </div>
+      <div class="way">
+        <h3>By hand</h3>
+        <p>Any computer. NickelMenu must already be on the Kobo.</p>
+        <ol>
+          <li>Download <code>KoboRoot.tgz</code> from the <a href="https://github.com/tunctn/annas-kobo/releases/latest">latest release</a>.</li>
+          <li>Copy it into the <code>.kobo</code> folder of the KOBOeReader drive.</li>
+          <li>Eject, unplug, restart the Kobo.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap foot-dense">
+  <p>Anna's Kobo. GPL-3.0-or-later. Made by <a href="https://tunc.co">Tunç Türkmen</a>. Rust, <a href="https://github.com/tiago-cos/kepub-rs">kepub-rs</a>, <a href="https://pgaskin.net/NickelMenu/">NickelMenu</a>. Not affiliated with Rakuten Kobo, Anna's Archive or Library Genesis. Bugs and other Kobo models: <a href="https://github.com/tunctn/annas-kobo/issues">issues on GitHub</a>.</p>
+</footer>
+
+</body>
+</html>

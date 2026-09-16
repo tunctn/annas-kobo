@@ -186,6 +186,7 @@ the next patch version. About 10 minutes later the release has
 | `src/config.rs` | `config.json` |
 | `kobo/` | launcher script and the NickelMenu file |
 | `mac/` | launcher and Info.plist of the installer app |
+| `site/` | annas-kobo.tunc.co, static HTML |
 | `tools/` | build, package, package-installer, deploy, install-usb, kobo-sh, kobo-shot, kobo-gif |
 | `.github/workflows/release.yml` | Run workflow in the Actions tab: bumps the version, tags, builds, signs, publishes |
 

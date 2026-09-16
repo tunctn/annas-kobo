@@ -4,3 +4,4 @@
 *.part
 /dist
 /docs/frames
+/.hallmark
