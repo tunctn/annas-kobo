@@ -2,7 +2,7 @@
 # Build dist/AnnasKoboInstaller.zip: a Mac app that wraps tools/install-usb.
 # Double-clicking it finds the Kobo over USB, installs NickelMenu if needed,
 # installs or updates Anna's Kobo, and ejects. It has no Apple signature, so
-# the first launch needs right-click, Open.
+# macOS blocks the first launch until Open Anyway in Privacy & Security.
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)"
