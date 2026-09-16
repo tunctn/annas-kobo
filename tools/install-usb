@@ -1,21 +1,132 @@
 #!/bin/sh
-# One-command USB install: with the Kobo plugged in, copies dist/KoboRoot.tgz
-# (built here, or the latest GitHub release when this repo is not around)
-# into .kobo/ on the drive and ejects it. The Kobo installs it on the next
-# boot; reboot it after unplugging (hold power, Power off, then on).
+# Installs or updates Anna's Kobo on a Kobo plugged in over USB. If the Kobo
+# has no NickelMenu, it is installed in the same step: both packages are
+# merged into one KoboRoot.tgz, which goes into .kobo/ on the drive and is
+# applied by the Kobo on its next boot.
+#
+# On a Mac it talks through dialogs (the installer app runs it this way);
+# GUI=0 gives plain text. Optional argument: a KoboRoot.tgz to install instead
+# of the latest release. tools/package builds one in dist/, which is used
+# when present.
 set -eu
+
+REPO=tunctn/annas-kobo
+NM_URL=https://github.com/pgaskin/NickelMenu/releases/latest/download/KoboRoot.tgz
 HERE="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd || true)"
-TGZ="${1:-$HERE/dist/KoboRoot.tgz}"
-VOL="$(ls -d /Volumes/KOBOeReader /media/*/KOBOeReader /run/media/*/KOBOeReader 2>/dev/null | head -1 || true)"
-[ -n "$VOL" ] || { echo "Kobo not found: plug it in over USB and tap Connect on the device" >&2; exit 1; }
-if [ ! -f "$TGZ" ]; then
-  TGZ="$(mktemp -d)/KoboRoot.tgz"
-  echo "downloading the latest release ..."
-  curl -fsSL -o "$TGZ" https://github.com/tunctn/annas-kobo/releases/latest/download/KoboRoot.tgz
+TGZ="${1:-}"
+[ -n "$TGZ" ] || [ ! -f "$HERE/dist/KoboRoot.tgz" ] || TGZ="$HERE/dist/KoboRoot.tgz"
+if [ -z "${GUI:-}" ]; then
+  if [ "$(uname)" = Darwin ] && command -v osascript >/dev/null; then GUI=1; else GUI=0; fi
 fi
-[ -f "$VOL/.adds/nm/config" ] || [ -d "$VOL/.adds/nm" ] || \
-  echo "note: NickelMenu is not installed on this Kobo; install it first (https://pgaskin.net/NickelMenu/)" >&2
-cp "$TGZ" "$VOL/.kobo/KoboRoot.tgz"
+
+say() { printf '%s\n' "$*"; }
+
+# dialog TEXT BUTTON... : shows TEXT with the buttons, the last one default.
+# A button called Cancel makes it exit non-zero, like a failed osascript.
+dialog() {
+  [ "$GUI" = 1 ] || { say "$1"; return 0; }
+  osascript - "$@" <<'APPLESCRIPT' >/dev/null
+on run argv
+  set btns to rest of argv
+  display dialog (item 1 of argv) with title "Anna's Kobo" buttons btns default button (item -1 of btns) with icon note
+end run
+APPLESCRIPT
+}
+
+die() {
+  say "error: $*" >&2
+  [ "$GUI" = 1 ] && osascript - "$*" <<'APPLESCRIPT' >/dev/null 2>&1
+on run argv
+  display dialog (item 1 of argv) with title "Anna's Kobo" buttons {"OK"} default button "OK" with icon stop
+end run
+APPLESCRIPT
+  exit 1
+}
+
+find_kobo() {
+  ls -d /Volumes/KOBOeReader /media/*/KOBOeReader /run/media/*/KOBOeReader 2>/dev/null | head -1
+}
+
+# The Kobo shows up as a drive a few seconds after Connect is tapped.
+VOL="${KOBO_VOLUME:-$(find_kobo)}"
+while [ -z "$VOL" ] || [ ! -d "$VOL/.kobo" ]; do
+  dialog "Plug the Kobo in over USB and tap Connect on its screen, then click Continue." Cancel Continue || exit 0
+  i=0
+  while [ $i -lt 10 ]; do
+    VOL="$(find_kobo)"
+    [ -n "$VOL" ] && [ -d "$VOL/.kobo" ] && break
+    sleep 1
+    i=$((i + 1))
+  done
+  [ "$GUI" = 1 ] || [ -n "$VOL" ] || die "Kobo not found"
+done
+say "Kobo found at $VOL"
+
+[ ! -e "$VOL/.kobo/KoboRoot.tgz" ] || die "The Kobo already has an update waiting in .kobo/KoboRoot.tgz. Unplug and restart it to apply that first, then run this again."
+
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+
+if [ ! -f "$TGZ" ]; then
+  say "downloading the latest Anna's Kobo release ..."
+  TGZ="$STAGE/annas-kobo.tgz"
+  curl -fsSL -o "$TGZ" "https://github.com/$REPO/releases/latest/download/KoboRoot.tgz" \
+    || die "Could not download Anna's Kobo from GitHub. Check the internet connection and try again."
+fi
+VFILE="$(tar -tzf "$TGZ" | grep 'annas-kobo/version$' | head -1 || true)"
+NEW="$( [ -n "$VFILE" ] && tar -xzOf "$TGZ" "$VFILE" || echo "")"
+
+HAVE_NM=0
+[ ! -f "$VOL/.adds/nm/doc" ] || HAVE_NM=1
+OLD=""
+if [ -f "$VOL/.adds/annas-kobo/annas-kobo" ]; then
+  OLD="$(cat "$VOL/.adds/annas-kobo/version" 2>/dev/null || echo "an older version")"
+fi
+
+if [ -n "$OLD" ]; then
+  if [ "$OLD" = "$NEW" ]; then
+    MSG="Anna's Kobo $NEW is already on this Kobo. Install it again?"; BTN="Reinstall"
+  else
+    MSG="Anna's Kobo $OLD is on this Kobo. Update to ${NEW:-the downloaded version}?"; BTN="Update"
+  fi
+else
+  MSG="This installs Anna's Kobo ${NEW:-} on the Kobo."; BTN="Install"
+fi
+if [ "$HAVE_NM" = 1 ]; then
+  MSG="$MSG
+
+NickelMenu is already installed."
+else
+  say "downloading NickelMenu ..."
+  curl -fsSL -o "$STAGE/nm.tgz" "$NM_URL" \
+    || die "Could not download NickelMenu from GitHub. Check the internet connection and try again."
+  MSG="$MSG
+
+NickelMenu, which Anna's Kobo needs, is installed at the same time."
+fi
+dialog "$MSG" Cancel "$BTN" || exit 0
+
+OUT="$TGZ"
+if [ "$HAVE_NM" = 0 ]; then
+  say "merging with NickelMenu ..."
+  mkdir "$STAGE/root"
+  tar -xzf "$STAGE/nm.tgz" -C "$STAGE/root"
+  tar -xzf "$TGZ" -C "$STAGE/root"
+  OUT="$STAGE/KoboRoot.tgz"
+  if tar --version 2>/dev/null | grep -q GNU; then OWNER="--owner=0 --group=0"; else OWNER="--uid 0 --gid 0"; fi
+  # shellcheck disable=SC2086
+  COPYFILE_DISABLE=1 tar -czf "$OUT" $OWNER --numeric-owner -C "$STAGE/root" .
+fi
+
+say "copying to the Kobo ..."
+cp "$OUT" "$VOL/.kobo/KoboRoot.tgz"
 sync
-if command -v diskutil >/dev/null; then diskutil eject "$VOL" >/dev/null; else udisksctl unmount -b "$(df --output=source "$VOL" | tail -1)" >/dev/null 2>&1 || umount "$VOL"; fi
-echo "copied. Unplug the Kobo and reboot it: it installs Anna's Kobo during boot."
+if command -v diskutil >/dev/null; then
+  diskutil eject "$VOL" >/dev/null || say "could not eject $VOL, eject it yourself"
+else
+  udisksctl unmount -b "$(df --output=source "$VOL" | tail -1)" >/dev/null 2>&1 || umount "$VOL" || say "could not unmount $VOL, do it yourself"
+fi
+
+dialog "Copied. Unplug the Kobo and restart it: hold the power button, tap Power off, then turn it on again.
+
+It shows an update screen for a few seconds. Anna's Kobo is then in NickelMenu, in the main menu of the home screen." Done || true

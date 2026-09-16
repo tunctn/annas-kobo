@@ -14,10 +14,13 @@ mkdir -p "$STAGE/mnt/onboard/.adds/annas-kobo" "$STAGE/mnt/onboard/.adds/nm"
 cp "$BIN" "$STAGE/mnt/onboard/.adds/annas-kobo/annas-kobo"
 cp kobo/annas-kobo.sh "$STAGE/mnt/onboard/.adds/annas-kobo/annas-kobo.sh"
 cp kobo/nm-annas-kobo "$STAGE/mnt/onboard/.adds/nm/annas-kobo"
+sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml > "$STAGE/mnt/onboard/.adds/annas-kobo/version"
 chmod 755 "$STAGE/mnt/onboard/.adds/annas-kobo/"*
 mkdir -p dist
 # root-owned, no macOS metadata, gzip: what rcS expects
-COPYFILE_DISABLE=1 tar -c -z -f dist/KoboRoot.tgz --uid 0 --gid 0 --numeric-owner -C "$STAGE" mnt
+if tar --version 2>/dev/null | grep -q GNU; then OWNER="--owner=0 --group=0"; else OWNER="--uid 0 --gid 0"; fi
+# shellcheck disable=SC2086
+COPYFILE_DISABLE=1 tar -c -z -f dist/KoboRoot.tgz $OWNER --numeric-owner -C "$STAGE" mnt
 cp "$BIN" dist/annas-kobo
 ls -la dist/
 tar -tzf dist/KoboRoot.tgz

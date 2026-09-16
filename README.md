@@ -28,33 +28,43 @@ books come from LibGen's free servers.
 
 ## Install
 
-You need [NickelMenu](https://pgaskin.net/NickelMenu/) on the Kobo. It
-installs the same way as this package.
+### From a Mac
 
-### Over USB
+1. Download `AnnasKoboInstaller.zip` from the
+   [latest release](https://github.com/tunctn/annas-kobo/releases/latest)
+   and unzip it.
+2. Plug the Kobo in over USB and tap Connect on its screen.
+3. Open "Anna's Kobo Installer". It installs NickelMenu if the Kobo does not
+   have it, installs or updates Anna's Kobo, and ejects the Kobo.
+4. Unplug the Kobo and restart it (hold power, tap Power off, then turn it
+   on). It shows an update screen for a few seconds. "Anna's Kobo" is now in
+   NickelMenu.
 
-1. Download `KoboRoot.tgz` from the
-   [latest release](https://github.com/tunctn/annas-kobo/releases/latest).
-2. Plug the Kobo in, tap Connect, and copy the file into the `.kobo` folder
-   of the `KOBOeReader` drive.
-3. Eject, unplug, and reboot the Kobo (hold power, Power off, then on). It
-   shows the update animation for a few seconds and restarts. "Anna's Kobo"
-   is now in NickelMenu.
+The app has no Apple signature, so macOS refuses it the first time.
+Right-click the app, choose Open, and confirm. On macOS 15 open System
+Settings, Privacy & Security, and click Open Anyway.
 
-This is the standard Kobo add-on format. At boot the firmware extracts the
-package over `/`, which puts the app in `.adds/annas-kobo/` and one menu
-file in `.adds/nm/`. Your own NickelMenu config is not touched. To update,
-repeat the steps.
-
-Or, with the Kobo plugged in, run:
+The same installer runs from a terminal, with the same dialogs:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tunctn/annas-kobo/main/tools/install-usb | sh
 ```
 
-This finds the mounted drive, copies the package into `.kobo/`, and ejects.
-Then unplug and reboot the Kobo. From a checkout, `tools/install-usb` does
-the same and uses `dist/KoboRoot.tgz` if you built one.
+### By hand
+
+Works from any computer. NickelMenu must already be on the Kobo; it installs
+the same way.
+
+1. Download `KoboRoot.tgz` from the
+   [latest release](https://github.com/tunctn/annas-kobo/releases/latest).
+2. Plug the Kobo in, tap Connect, and copy the file into the `.kobo` folder
+   of the `KOBOeReader` drive.
+3. Eject, unplug, and restart the Kobo.
+
+This is the standard Kobo add-on format. At boot the firmware extracts the
+package over `/`, which puts the app in `.adds/annas-kobo/` and one menu
+file in `.adds/nm/`. Your own NickelMenu config is not touched. To update,
+repeat the steps.
 
 ### Over Wi-Fi (development)
 
@@ -67,6 +77,7 @@ the device.
 tools/build     # cross-compile
 tools/deploy    # copy the binary, launcher and menu file to the Kobo, restart the app
 tools/package   # build dist/KoboRoot.tgz
+tools/package-installer   # build dist/AnnasKoboInstaller.zip, the Mac app
 ```
 
 `tools/deploy` reads `KOBO_HOST`, `KOBO_KEY` (ssh private key) and `MAC_IP`
@@ -150,6 +161,7 @@ cargo run -- kepubify book.epub
 tools/build && tools/deploy
 echo 'tail -30 /mnt/onboard/.adds/annas-kobo/annas-kobo.log' | tools/kobo-sh
 tools/kobo-shot shot.png                    # screenshot (needs koboterm on the device)
+tools/kobo-gif                              # stop-motion GIF: Enter per frame, q to stitch docs/demo.gif
 ```
 
 `tools/kobo-sh` feeds a script to the Kobo through the stock sshd's
@@ -169,8 +181,9 @@ interactive shell, since it supports no scp or sftp.
 | `src/nickel.rs` | Nickel detection, NickelDBus rescan for folder mode |
 | `src/config.rs` | `config.json` |
 | `kobo/` | launcher script and the NickelMenu file |
-| `tools/` | build, package, deploy, install-usb, kobo-sh, kobo-shot |
-| `.github/workflows/release.yml` | builds `KoboRoot.tgz` on a `v*` tag |
+| `mac/` | Info.plist of the installer app |
+| `tools/` | build, package, package-installer, deploy, install-usb, kobo-sh, kobo-shot |
+| `.github/workflows/release.yml` | builds `KoboRoot.tgz` and the installer on a `v*` tag |
 
 ## License
 
