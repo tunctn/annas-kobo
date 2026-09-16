@@ -39,6 +39,12 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 .wordmark { font-family: var(--font-display); font-size: var(--text-md); font-weight: 500; text-decoration: none; letter-spacing: -0.005em; }
 .nav-edge .link { font-size: var(--text-sm); white-space: nowrap; }
 
+/* star counts, filled in by the script at the end of the page */
+.stars { display: inline-flex; align-items: center; gap: 0.3em; margin-left: 0.6em; font-variant-numeric: tabular-nums; }
+.stars[hidden] { display: none; }
+.nav-edge .stars { color: var(--color-neutral); }
+.btn .stars { padding-left: 0.6em; border-left: 1px solid var(--color-rule); }
+
 /* hero */
 .hero { padding-block: var(--space-2xl) var(--space-3xl); }
 .hero h1 {
